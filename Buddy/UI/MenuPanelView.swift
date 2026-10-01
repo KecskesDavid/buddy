@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The panel that drops down from Clicky's menu bar icon: how to draw, model, quit.
+/// The panel that drops down from Buddy's menu bar icon: how to draw, model, quit.
 struct MenuPanelView: View {
     let model: AppModel
     @Environment(\.openWindow) private var openWindow
@@ -9,7 +9,7 @@ struct MenuPanelView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 Image(systemName: "cursorarrow.rays")
-                Text("Clicky").font(.headline)
+                Text("Buddy").font(.headline)
             }
 
             Divider()
@@ -48,7 +48,7 @@ struct MenuPanelView: View {
                     openWindow(id: "debug-console")
                 }
                 Spacer()
-                Button("Quit Clicky") { NSApplication.shared.terminate(nil) }
+                Button("Quit Buddy") { NSApplication.shared.terminate(nil) }
                     .keyboardShortcut("q")
             }
         }

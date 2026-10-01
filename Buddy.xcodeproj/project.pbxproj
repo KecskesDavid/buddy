@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		C1A0000000000000000000A1 /* Clicky.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Clicky.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C1A0000000000000000000A1 /* Buddy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Buddy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		C1A0000000000000000000A2 /* Clicky */ = {
+		C1A0000000000000000000A2 /* Buddy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Clicky;
+			path = Buddy;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,7 +32,7 @@
 		C1A0000000000000000000A4 = {
 			isa = PBXGroup;
 			children = (
-				C1A0000000000000000000A2 /* Clicky */,
+				C1A0000000000000000000A2 /* Buddy */,
 				C1A0000000000000000000A5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -40,7 +40,7 @@
 		C1A0000000000000000000A5 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C1A0000000000000000000A1 /* Clicky.app */,
+				C1A0000000000000000000A1 /* Buddy.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		C1A0000000000000000000A6 /* Clicky */ = {
+		C1A0000000000000000000A6 /* Buddy */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = C1A0000000000000000000B2 /* Build configuration list for PBXNativeTarget "Clicky" */;
+			buildConfigurationList = C1A0000000000000000000B2 /* Build configuration list for PBXNativeTarget "Buddy" */;
 			buildPhases = (
 				C1A0000000000000000000A7 /* Sources */,
 				C1A0000000000000000000A3 /* Frameworks */,
@@ -61,13 +61,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				C1A0000000000000000000A2 /* Clicky */,
+				C1A0000000000000000000A2 /* Buddy */,
 			);
-			name = Clicky;
+			name = Buddy;
 			packageProductDependencies = (
 			);
-			productName = Clicky;
-			productReference = C1A0000000000000000000A1 /* Clicky.app */;
+			productName = Buddy;
+			productReference = C1A0000000000000000000A1 /* Buddy.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = C1A0000000000000000000B1 /* Build configuration list for PBXProject "Clicky" */;
+			buildConfigurationList = C1A0000000000000000000B1 /* Build configuration list for PBXProject "Buddy" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -99,7 +99,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				C1A0000000000000000000A6 /* Clicky */,
+				C1A0000000000000000000A6 /* Buddy */,
 			);
 		};
 /* End PBXProject section */
@@ -234,7 +234,7 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Clicky;
+				INFOPLIST_KEY_CFBundleDisplayName = Buddy;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -242,7 +242,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.davidkecskes.clicky;
+				PRODUCT_BUNDLE_IDENTIFIER = com.davidkecskes.buddy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -263,7 +263,7 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Clicky;
+				INFOPLIST_KEY_CFBundleDisplayName = Buddy;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -271,7 +271,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.davidkecskes.clicky;
+				PRODUCT_BUNDLE_IDENTIFIER = com.davidkecskes.buddy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -283,7 +283,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		C1A0000000000000000000B1 /* Build configuration list for PBXProject "Clicky" */ = {
+		C1A0000000000000000000B1 /* Build configuration list for PBXProject "Buddy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C1A0000000000000000000C1 /* Debug */,
@@ -292,7 +292,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C1A0000000000000000000B2 /* Build configuration list for PBXNativeTarget "Clicky" */ = {
+		C1A0000000000000000000B2 /* Build configuration list for PBXNativeTarget "Buddy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C1A0000000000000000000C3 /* Debug */,

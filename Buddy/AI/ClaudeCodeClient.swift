@@ -12,7 +12,7 @@ nonisolated struct ClaudeReply: Sendable {
 }
 
 /// Talks to Claude through the user's own installed, logged-in Claude Code CLI (`claude -p`).
-/// Clicky never sees or stores Claude credentials. See plan.md → topic 2 and Spike 2.
+/// Buddy never sees or stores Claude credentials. See plan.md → topic 2 and Spike 2.
 nonisolated struct ClaudeCodeClient: Sendable {
     var model = "haiku"
     var timeout: TimeInterval = 30
@@ -66,13 +66,13 @@ nonisolated struct ClaudeCodeClient: Sendable {
             "--output-format", "stream-json",
             "--verbose",
             "--model", model,
-            "--system-prompt", ClickyPrompt.system,
+            "--system-prompt", BuddyPrompt.system,
             "--tools", "",
             "--strict-mcp-config",
             "--no-session-persistence",
             // Don't load the user's own Claude Code setup (hooks, plugins, skills, settings, Chrome):
             // it's slow, and anything in it that touches ~/Documents, ~/Desktop, network volumes, … makes
-            // macOS show privacy prompts blamed on Clicky and freezes `claude` until they're answered.
+            // macOS show privacy prompts blamed on Buddy and freezes `claude` until they're answered.
             // (Not `--bare`: that only allows ANTHROPIC_API_KEY auth, no subscription login.)
             "--setting-sources", "",
             "--restricted",

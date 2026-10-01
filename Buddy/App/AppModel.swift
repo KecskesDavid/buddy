@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import Observation
 
-/// Which Claude model Clicky asks. Persisted in UserDefaults.
+/// Which Claude model Buddy asks. Persisted in UserDefaults.
 enum ClaudeModel: String, CaseIterable, Identifiable {
     case haiku, sonnet
     var id: String { rawValue }
@@ -120,7 +120,7 @@ final class AppModel {
                     question: "Explain what I circled."
                 )
                 print(String(
-                    format: "[Clicky] capture %.2f s · Claude %.2f s · total %.2f s · %ld KB image",
+                    format: "[Buddy] capture %.2f s · Claude %.2f s · total %.2f s · %ld KB image",
                     captured.timeIntervalSince(started), Date().timeIntervalSince(captured),
                     Date().timeIntervalSince(started), jpeg.count / 1024
                 ))

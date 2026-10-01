@@ -40,7 +40,7 @@ final class DrawingController {
             return panel
         }
 
-        // Make the panel under the mouse key (without activating Clicky) so the crosshair shows.
+        // Make the panel under the mouse key (without activating Buddy) so the crosshair shows.
         let mouse = NSEvent.mouseLocation
         (panels.first { NSMouseInRect(mouse, $0.frame, false) } ?? panels.first)?.makeKey()
         NSCursor.crosshair.set()
@@ -188,11 +188,11 @@ final class DrawingView: NSView {
         path.lineJoinStyle = .round
         path.move(to: points[0])
         for p in points.dropFirst() { path.line(to: p) }
-        ClickyColors.stroke.setStroke()
+        BuddyColors.stroke.setStroke()
         path.stroke()
     }
 }
 
-enum ClickyColors {
+enum BuddyColors {
     static let stroke = NSColor(srgbRed: 1.0, green: 0.15, blue: 0.15, alpha: 1)
 }

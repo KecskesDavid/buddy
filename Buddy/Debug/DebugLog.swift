@@ -15,7 +15,7 @@ nonisolated struct DebugEntry: Identifiable, Sendable {
     let raw: String?
 }
 
-/// In-memory log of what Clicky and its `claude` processes are doing, shown in the Debug Console.
+/// In-memory log of what Buddy and its `claude` processes are doing, shown in the Debug Console.
 /// Privacy: memory only, never written to disk, cleared on quit. The screenshot itself is never
 /// logged — only its size.
 @Observable

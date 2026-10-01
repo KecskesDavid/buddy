@@ -40,9 +40,9 @@ nonisolated final class WarmClaudeProcess: @unchecked Sendable {
         process.executableURL = executable
         process.arguments = arguments
         process.environment = environment
-        // Run in an empty private folder. Without this, `claude` inherits Clicky's cwd (`/`), looks around it
-        // and touches ~/Music, ~/Documents, … — macOS then blames Clicky with privacy prompts
-        // ("Clicky would like to access Apple Music…") and freezes `claude` until they're answered.
+        // Run in an empty private folder. Without this, `claude` inherits Buddy's cwd (`/`), looks around it
+        // and touches ~/Music, ~/Documents, … — macOS then blames Buddy with privacy prompts
+        // ("Buddy would like to access Apple Music…") and freezes `claude` until they're answered.
         process.currentDirectoryURL = Self.workingDirectory
 
         let inPipe = Pipe(), outPipe = Pipe(), errPipe = Pipe()
@@ -178,9 +178,9 @@ nonisolated final class WarmClaudeProcess: @unchecked Sendable {
 }
 
 extension WarmClaudeProcess {
-    /// Empty folder in Clicky's temp dir (not privacy-protected), used as `claude`'s working directory.
+    /// Empty folder in Buddy's temp dir (not privacy-protected), used as `claude`'s working directory.
     nonisolated static let workingDirectory: URL = {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("clicky-claude", isDirectory: true)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("buddy-claude", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }()

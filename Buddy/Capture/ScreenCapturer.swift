@@ -10,18 +10,18 @@ nonisolated enum CaptureError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noPermission:
-            return "Clicky needs Screen Recording permission. Turn it on in System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen Clicky."
+            return "Buddy needs Screen Recording permission. Turn it on in System Settings → Privacy & Security → Screen & System Audio Recording, then quit and reopen Buddy."
         case .displayNotFound:
             return "Couldn't find the display to capture."
         case .encodingFailed:
             return "Couldn't prepare the screenshot."
         case .timedOut:
-            return "Taking the screenshot got stuck. Check that Clicky has Screen Recording permission, then quit and reopen Clicky."
+            return "Taking the screenshot got stuck. Check that Buddy has Screen Recording permission, then quit and reopen Buddy."
         }
     }
 }
 
-/// Captures the whole display (without Clicky's own windows), scaled to Claude's recommended size.
+/// Captures the whole display (without Buddy's own windows), scaled to Claude's recommended size.
 enum ScreenCapturer {
     static let maxLongEdge: CGFloat = 1568
 

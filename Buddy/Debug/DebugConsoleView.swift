@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Live view of Clicky's `claude` processes: what's running, every stream-json event, stderr, exits, timeouts.
+/// Live view of Buddy's `claude` processes: what's running, every stream-json event, stderr, exits, timeouts.
 /// Open it from the menu bar panel → "Debug Console".
 struct DebugConsoleView: View {
     private let log = DebugLog.shared

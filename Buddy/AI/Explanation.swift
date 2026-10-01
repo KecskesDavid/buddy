@@ -1,6 +1,6 @@
 import Foundation
 
-/// The fixed answer format Clicky asks Claude for (see ClickyPrompt).
+/// The fixed answer format Buddy asks Claude for (see BuddyPrompt).
 nonisolated struct Explanation: Decodable, Sendable, Equatable {
     let title: String
     let what: String

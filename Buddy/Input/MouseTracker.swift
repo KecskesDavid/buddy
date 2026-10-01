@@ -16,7 +16,7 @@ final class MouseTracker {
         }) {
             monitors.append(global)
         }
-        // Local: mouse moves while one of Clicky's own windows is active.
+        // Local: mouse moves while one of Buddy's own windows is active.
         if let local = NSEvent.addLocalMonitorForEvents(matching: mask, handler: { [weak self] event in
             self?.onMove?(NSEvent.mouseLocation)
             return event

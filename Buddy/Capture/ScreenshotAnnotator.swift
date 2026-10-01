@@ -18,7 +18,7 @@ enum ScreenshotAnnotator {
         let sy = CGFloat(height) / frame.height
         let pixels = shape.points.map { CGPoint(x: ($0.x - frame.minX) * sx, y: ($0.y - frame.minY) * sy) }
 
-        context.setStrokeColor(ClickyColors.stroke.cgColor)
+        context.setStrokeColor(BuddyColors.stroke.cgColor)
         context.setLineWidth(max(3, 3 * sx))
         context.setLineCap(.round)
         context.setLineJoin(.round)
