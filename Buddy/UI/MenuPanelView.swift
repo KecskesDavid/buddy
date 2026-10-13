@@ -16,10 +16,10 @@ struct MenuPanelView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 sectionTitle("How to draw")
-                step("1", "Press \(Text("⌃⌥Space").font(.callout.monospaced().weight(.semibold)))")
+                step("1", "Tap \(Text("fn⌃").font(.callout.monospaced().weight(.semibold)))")
                 step("2", "Circle something on screen")
                 step("3", "Release — the answer appears next to the cursor")
-                Text("Esc or any click closes it.")
+                Text("Hold fn⌃ instead to also ask out loud while you circle. Follow up by typing or holding fn⌃; × closes.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

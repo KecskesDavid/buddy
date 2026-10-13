@@ -22,6 +22,8 @@ struct DrawnShape {
 /// Drawing mode: one invisible, full-screen panel per display that captures the mouse.
 /// The screen itself doesn't change; the cursor becomes a crosshair; stroke is red, 3 pt.
 final class DrawingController {
+    /// The mouse went down to start a circle (it may still turn out to be an accidental click).
+    var onStart: (() -> Void)?
     var onFinish: ((DrawnShape) -> Void)?
     private(set) var isActive = false
     private var panels: [DrawingPanel] = []
@@ -33,6 +35,7 @@ final class DrawingController {
 
         panels = NSScreen.screens.map { screen in
             let panel = DrawingPanel(screen: screen)
+            panel.drawingView.onStart = { [weak self] in self?.onStart?() }
             panel.drawingView.onFinish = { [weak self] points in
                 self?.finish(points: points, screen: screen)
             }
@@ -119,6 +122,7 @@ final class DrawingPanel: NSPanel {
 }
 
 final class DrawingView: NSView {
+    var onStart: (() -> Void)?
     var onFinish: (([CGPoint]) -> Void)?
     var isLocked = false
 
@@ -157,6 +161,7 @@ final class DrawingView: NSView {
         points = [convert(event.locationInWindow, from: nil)]
         NSCursor.crosshair.set()
         needsDisplay = true
+        onStart?()
     }
 
     override func mouseDragged(with event: NSEvent) {

@@ -32,6 +32,8 @@ nonisolated final class WarmClaudeProcess: @unchecked Sendable {
     private let stdout: FileHandle
     private let stderrLock = NSLock()
     private var stderrData = Data()
+    /// Only touched by whoever is reading stdout: `send`, then the drain it hands off to.
+    private var stdoutBuffer = Data()
     private var didTimeOut = false
 
     init(executable: URL, arguments: [String], environment: [String: String]) throws {
@@ -99,8 +101,8 @@ nonisolated final class WarmClaudeProcess: @unchecked Sendable {
         }
     }
 
-    /// Blocking: writes one stream-json message, reads stdout until the `result` event,
-    /// then closes stdin so the process exits.
+    /// Blocking: writes one stream-json message, closes stdin so the process exits afterwards,
+    /// and reads stdout until the answer arrives.
     func send(_ line: Data, timeout: TimeInterval) throws -> ClaudeResult {
         let killer = DispatchWorkItem { [weak self] in
             guard let self, self.process.isRunning else { return }
@@ -132,36 +134,32 @@ nonisolated final class WarmClaudeProcess: @unchecked Sendable {
             }
         }
 
-        var buffer = Data()
         var usage: ClaudeUsage?
-        while let chunk = try? stdout.read(upToCount: 64 * 1024), !chunk.isEmpty {
-            buffer.append(chunk)
-            while let newline = buffer.firstIndex(of: 0x0A) {
-                let lineData = Data(buffer[buffer.startIndex..<newline])
-                buffer.removeSubrange(buffer.startIndex...newline)
-                guard let object = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else {
-                    let text = String(decoding: lineData, as: UTF8.self)
-                    if !text.trimmingCharacters(in: .whitespaces).isEmpty { DebugLog.log(.stdout, pid: pid, text) }
-                    continue
-                }
-                let isUserEcho = object["type"] as? String == "user" // may contain the base64 screenshot
-                DebugLog.log(
-                    Self.isErrorEvent(object) ? .error : .stdout, pid: pid, Self.describe(object),
-                    raw: isUserEcho ? nil : String(decoding: lineData, as: UTF8.self)
+        let answer = readEvents { object -> ClaudeResult? in
+            switch object["type"] as? String {
+            case "rate_limit_event":
+                usage = ClaudeUsage(event: object) ?? usage
+                return nil
+            // Answer on the assistant message, not on `result`: Claude Code (2.1.286) only sends `result` after a
+            // background "post-turn summary", which adds 1–3 s. API errors also arrive here, with an `error` field.
+            case "assistant":
+                let content = (object["message"] as? [String: Any])?["content"] as? [[String: Any]] ?? []
+                let text = content.compactMap { $0["type"] as? String == "text" ? $0["text"] as? String : nil }.joined()
+                return text.isEmpty ? nil : ClaudeResult(text: text, isError: object["error"] != nil, usage: usage)
+            case "result":
+                return ClaudeResult(
+                    text: object["result"] as? String ?? "",
+                    isError: object["is_error"] as? Bool ?? false,
+                    usage: usage
                 )
-                switch object["type"] as? String {
-                case "rate_limit_event":
-                    usage = ClaudeUsage(event: object) ?? usage
-                case "result":
-                    return ClaudeResult(
-                        text: object["result"] as? String ?? "",
-                        isError: object["is_error"] as? Bool ?? false,
-                        usage: usage
-                    )
-                default:
-                    continue
-                }
+            default:
+                return nil
             }
+        }
+        if let answer {
+            // Keep draining stdout (summary, `result`) so the process can finish and exit; only logged.
+            DispatchQueue.global(qos: .utility).async { _ = self.readEvents { _ -> Bool? in nil } }
+            return answer
         }
 
         // EOF without a result.
@@ -174,6 +172,30 @@ nonisolated final class WarmClaudeProcess: @unchecked Sendable {
             throw ClaudeCodeError.processFailed(details.isEmpty ? "exit code \(process.terminationStatus)" : details)
         }
         throw ClaudeCodeError.noResult
+    }
+
+    /// Blocking: reads stdout line by line, logging every stream-json event, until `stop` returns a value.
+    /// Returns nil at EOF.
+    private func readEvents<T>(until stop: ([String: Any]) -> T?) -> T? {
+        while true {
+            while let newline = stdoutBuffer.firstIndex(of: 0x0A) {
+                let lineData = Data(stdoutBuffer[stdoutBuffer.startIndex..<newline])
+                stdoutBuffer.removeSubrange(stdoutBuffer.startIndex...newline)
+                guard let object = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else {
+                    let text = String(decoding: lineData, as: UTF8.self)
+                    if !text.trimmingCharacters(in: .whitespaces).isEmpty { DebugLog.log(.stdout, pid: pid, text) }
+                    continue
+                }
+                let isUserEcho = object["type"] as? String == "user" // may contain the base64 screenshot
+                DebugLog.log(
+                    Self.isErrorEvent(object) ? .error : .stdout, pid: pid, Self.describe(object),
+                    raw: isUserEcho ? nil : String(decoding: lineData, as: UTF8.self)
+                )
+                if let value = stop(object) { return value }
+            }
+            guard let chunk = try? stdout.read(upToCount: 64 * 1024), !chunk.isEmpty else { return nil }
+            stdoutBuffer.append(chunk)
+        }
     }
 }
 

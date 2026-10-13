@@ -21,7 +21,8 @@ enum ClaudeModel: String, CaseIterable, Identifiable {
 }
 
 /// Shared app state and the MVP flow:
-/// ⌃⌥Space → draw → capture screen + circle → Claude → answer bubble next to the cursor.
+/// fn⌃ tap → draw → capture screen + circle → Claude → answer bubble next to the cursor.
+/// Holding fn⌃ instead also listens for a spoken question (plan.md topic 13).
 @Observable
 final class AppModel {
     static let shared = AppModel()
@@ -29,16 +30,35 @@ final class AppModel {
     let mouse = MouseTracker()
     let drawing = DrawingController()
     let bubble = BubbleController()
+    let listener = SpeechListener()
 
-    private(set) var isDrawHotKeyRegistered = false
     private(set) var model: ClaudeModel =
         ClaudeModel(rawValue: UserDefaults.standard.string(forKey: "model") ?? "") ?? .haiku
 
-    @ObservationIgnored private var drawHotKey: HotKey?
+    @ObservationIgnored private var drawKeys: ModifierGesture?
     @ObservationIgnored private var escHotKey: HotKey?
-    @ObservationIgnored private var clickMonitors: [Any] = []
     /// Bumped on every new request / cancel, so late answers from old requests are ignored.
     @ObservationIgnored private var requestID = 0
+    /// The open bubble's capture and turns, resent with each follow-up. In memory only, dropped when the bubble closes.
+    @ObservationIgnored private var conversation: Conversation?
+    /// The fn⌃ hold in progress, from the press until it's sent or cancelled.
+    @ObservationIgnored private var hold: Hold?
+
+    /// Listening runs until the keys are up and the circle is done; with an answer open and no circle,
+    /// it's a follow-up and ends with the keys.
+    private struct Hold {
+        var isFollowUp: Bool
+        var keysReleased = false
+        var shape: DrawnShape?
+    }
+
+    private struct Conversation {
+        let image: ImageAttachment
+        let context: String
+        var turns: [(question: String, answer: String)]
+    }
+
+    private static let firstQuestion = "Explain what I circled."
 
     private var claude: ClaudeCodeClient { ClaudeCodeClient(model: model.rawValue) }
 
@@ -48,13 +68,22 @@ final class AppModel {
         mouse.onMove = { [weak self] location in self?.bubble.follow(location) }
         mouse.start()
 
-        drawing.onFinish = { [weak self] shape in self?.explain(shape) }
+        drawing.onStart = { [weak self] in self?.circleStarted() }
+        drawing.onFinish = { [weak self] shape in self?.circleFinished(shape) }
+        bubble.onAsk = { [weak self] question in self?.askFollowUp(question) }
+        bubble.onClose = { [weak self] in self?.closeBubble() }
+        listener.onText = { [weak self] words in self?.heard(words) }
+        listener.onDownloading = { [weak self] in self?.heard("Downloading the speech model…") }
+        listener.onError = { [weak self] error in self?.listeningFailed(error) }
 
-        let drawKey = HotKey(keyCode: kVK_Space, modifiers: controlKey | optionKey) { [weak self] in
-            self?.toggleDrawing()
+        let drawKeys = ModifierGesture([.function, .control])
+        drawKeys.onTap = { [weak self] in self?.toggleDrawing() }
+        drawKeys.onHoldStart = { [weak self] in self?.startHold() }
+        drawKeys.onHoldEnd = { [weak self] cancelled in
+            if cancelled { self?.cancelAll() } else { self?.keysReleased() }
         }
-        isDrawHotKeyRegistered = drawKey.register()
-        drawHotKey = drawKey
+        drawKeys.start()
+        self.drawKeys = drawKeys
 
         // Registered only while drawing mode or the bubble is open (a global key monitor would need Accessibility).
         escHotKey = HotKey(keyCode: kVK_Escape, modifiers: 0) { [weak self] in
@@ -90,12 +119,118 @@ final class AppModel {
         escHotKey?.register()
     }
 
-    private func explain(_ shape: DrawnShape) {
+    // MARK: - Voice (hold fn⌃)
+
+    private func startHold() {
+        // Held again before circling after an earlier release: keep listening.
+        if var hold {
+            hold.keysReleased = false
+            self.hold = hold
+            return
+        }
+        let isFollowUp = conversation != nil && bubble.isShown && !drawing.isActive
+        if isFollowUp {
+            bubble.setDraft("", listening: true)
+            drawing.begin()
+        } else {
+            // A tap may have started drawing mode already; the words then go with that circle.
+            if !drawing.isActive {
+                if bubble.isShown { closeBubble() }
+                drawing.begin()
+            }
+            bubble.showListening(at: NSEvent.mouseLocation)
+        }
+        escHotKey?.register()
+        hold = Hold(isFollowUp: isFollowUp)
+        listener.start()
+        DebugLog.log(.app, "voice · hold started\(isFollowUp ? " (follow-up)" : "")")
+    }
+
+    private func heard(_ words: String) {
+        guard let hold else { return }
+        if hold.isFollowUp {
+            bubble.setDraft(words, listening: true)
+        } else {
+            bubble.showListening(words)
+        }
+    }
+
+    /// Circling during a follow-up hold asks a new question about the new circle instead.
+    private func circleStarted() {
+        guard var hold, hold.isFollowUp else { return }
+        hold.isFollowUp = false
+        self.hold = hold
+        requestID += 1
+        conversation = nil
+        bubble.showListening(at: NSEvent.mouseLocation, words: listener.text)
+    }
+
+    private func circleFinished(_ shape: DrawnShape) {
+        guard var hold else {
+            explain(shape)
+            return
+        }
+        hold.shape = shape
+        self.hold = hold
+        if hold.keysReleased { sendHold() }
+    }
+
+    private func keysReleased() {
+        guard var hold else { return }
+        hold.keysReleased = true
+        self.hold = hold
+        if hold.isFollowUp || hold.shape != nil { sendHold() }
+    }
+
+    private func sendHold() {
+        guard let hold else { return }
+        self.hold = nil
+        let listener = listener
+        let spoken = Task { await listener.finish() }
+        if let shape = hold.shape {
+            explain(shape, spoken: spoken)
+            return
+        }
+        // Follow-up: no circle, just the words.
+        drawing.cancel()
+        releaseEsc()
+        bubble.setDraft(listener.text, listening: false)
+        let id = requestID
+        Task {
+            let question = await spoken.value
+            guard id == requestID else { return }
+            if question.isEmpty {
+                bubble.setDraft("", listening: false)
+            } else {
+                bubble.ask(question)
+            }
+        }
+    }
+
+    private func listeningFailed(_ error: Error) {
+        guard let hold else { return }
+        self.hold = nil
+        DebugLog.log(.error, "voice · \(error.localizedDescription)")
+        if drawing.isActive { drawing.cancel() }
+        releaseEsc()
+        if hold.isFollowUp {
+            bubble.setDraft("", listening: false)
+            bubble.showNotice(error.localizedDescription)
+        } else {
+            requestID += 1
+            drawing.fadeOut()
+            bubble.showError(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Asking Claude
+
+    /// - Parameter spoken: the words from a hold, still being finished while the screen is captured.
+    private func explain(_ shape: DrawnShape, spoken: Task<String, Never>? = nil) {
         requestID += 1
         let id = requestID
 
         bubble.showThinking(at: NSEvent.mouseLocation)
-        addClickMonitors()
         let client = claude
 
         DebugLog.log(.app, "request #\(id) · circle drawn → capturing screen")
@@ -114,11 +249,11 @@ final class AppModel {
                 let context = WindowContext.describe(at: shape.center)
                 let captured = Date()
                 DebugLog.log(.app, "request #\(id) · captured \(jpeg.count / 1024) KB in \(String(format: "%.2f", captured.timeIntervalSince(started))) s · \(context) → asking Claude (\(client.model))")
-                let reply = try await client.explain(
-                    image: ImageAttachment(data: jpeg, mediaType: "image/jpeg"),
-                    context: context,
-                    question: "Explain what I circled."
-                )
+                let image = ImageAttachment(data: jpeg, mediaType: "image/jpeg")
+                let heard = await spoken?.value ?? ""
+                let question = heard.isEmpty ? Self.firstQuestion : heard
+                if !heard.isEmpty { DebugLog.log(.app, "request #\(id) · spoken question: \(heard)") }
+                let reply = try await client.explain(image: image, context: context, question: question)
                 print(String(
                     format: "[Buddy] capture %.2f s · Claude %.2f s · total %.2f s · %ld KB image",
                     captured.timeIntervalSince(started), Date().timeIntervalSince(captured),
@@ -130,50 +265,73 @@ final class AppModel {
                     return
                 }
                 drawing.fadeOut()
-                bubble.show(reply.explanation)
+                conversation = Conversation(
+                    image: image,
+                    context: context,
+                    turns: [(question, "\(reply.explanation.title): \(reply.explanation.what)")]
+                )
+                bubble.show(reply.explanation, question: heard.isEmpty ? nil : heard)
+                releaseEsc()
             } catch {
                 DebugLog.log(.error, "request #\(id) · \(error.localizedDescription)")
                 guard id == requestID else { return }
                 drawing.fadeOut()
                 bubble.showError(error.localizedDescription)
+                releaseEsc()
             }
         }
     }
 
-    /// Esc: cancels drawing mode, a pending request, or closes the bubble.
+    /// A question typed into the bubble: same screenshot and context, plus the earlier turns.
+    private func askFollowUp(_ question: String) {
+        guard let conversation else { return }
+        let id = requestID
+        let client = claude
+        DebugLog.log(.app, "request #\(id) · follow-up \(conversation.turns.count) → asking Claude (\(client.model))")
+
+        Task {
+            let started = Date()
+            do {
+                let reply = try await client.explain(
+                    image: conversation.image,
+                    context: conversation.context,
+                    question: BuddyPrompt.followUp(question, after: conversation.turns)
+                )
+                DebugLog.log(.app, "request #\(id) · follow-up answer in \(String(format: "%.2f", Date().timeIntervalSince(started))) s")
+                guard id == requestID else {
+                    DebugLog.log(.app, "request #\(id) · follow-up answer ignored (bubble closed)")
+                    return
+                }
+                self.conversation?.turns.append((question, reply.explanation.what))
+                bubble.showFollowUpAnswer(reply.explanation.what)
+            } catch {
+                DebugLog.log(.error, "request #\(id) · follow-up · \(error.localizedDescription)")
+                guard id == requestID else { return }
+                bubble.showFollowUpError(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Esc: cancels drawing mode or a pending request.
     func cancelAll() {
         requestID += 1
+        hold = nil
+        listener.cancel()
         if drawing.isActive { drawing.cancel() }
         closeBubble()
     }
 
     private func closeBubble() {
         requestID += 1
-        removeClickMonitors()
+        conversation = nil
         escHotKey?.unregister()
         drawing.fadeOut()
         bubble.hide {}
     }
 
-    /// Any click closes the bubble; the click still reaches the app underneath.
-    private func addClickMonitors() {
-        removeClickMonitors()
-        let mask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-        if let global = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { [weak self] _ in
-            self?.closeBubble()
-        }) {
-            clickMonitors.append(global)
-        }
-        if let local = NSEvent.addLocalMonitorForEvents(matching: mask, handler: { [weak self] event in
-            self?.closeBubble()
-            return event
-        }) {
-            clickMonitors.append(local)
-        }
-    }
-
-    private func removeClickMonitors() {
-        clickMonitors.forEach { NSEvent.removeMonitor($0) }
-        clickMonitors = []
+    /// The answer bubble stays open until × (or Esc while it has focus), so the global Esc hotkey is given back:
+    /// keeping it would swallow Esc in every other app for as long as the bubble is on screen.
+    private func releaseEsc() {
+        escHotKey?.unregister()
     }
 }

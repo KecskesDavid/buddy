@@ -16,7 +16,7 @@ struct DebugConsoleView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 3) {
                         if log.entries.isEmpty {
-                            Text("Nothing yet. Press ⌃⌥Space and circle something.")
+                            Text("Nothing yet. Tap fn⌃ and circle something.")
                                 .foregroundStyle(.gray)
                         }
                         ForEach(log.entries) { entry in

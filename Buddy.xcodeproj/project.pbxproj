@@ -233,10 +233,13 @@
 				DEVELOPMENT_TEAM = L3KHGCS5HL;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Buddy;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Buddy listens while you hold fn⌃, so you can ask your question out loud. Speech is turned into text on your Mac.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Buddy turns your spoken question into text on your Mac.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -262,10 +265,13 @@
 				DEVELOPMENT_TEAM = L3KHGCS5HL;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Buddy;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Buddy listens while you hold fn⌃, so you can ask your question out loud. Speech is turned into text on your Mac.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Buddy turns your spoken question into text on your Mac.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

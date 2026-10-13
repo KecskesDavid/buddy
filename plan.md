@@ -25,15 +25,16 @@ Each topic gets discussed, decided, and the decision written back here. **All MV
 | 1 | Tech stack & app type (Swift/SwiftUI + AppKit, menu bar app vs Dock app, min macOS version) | Decided | Swift + SwiftUI for all UI; AppKit only where SwiftUI can't (overlay `NSPanel`s, global mouse/key monitoring, window levels). Target the latest two macOS versions: **macOS 26 Tahoe and macOS 27 Golden Gate** (deployment target 26.0). Menu bar app only, **no Dock icon** (`LSUIElement = YES`). |
 | 2 | AI connection — how to use the Claude subscription (Claude Code CLI as backend vs Anthropic API key vs other); auth & ToS check | Decided | **Primary: the user's own installed Claude Code CLI** (`claude -p`, non-interactive, streamed JSON output), signed in via Anthropic's own login flow. Buddy never sees or stores Claude tokens. Usage counts toward the user's plan limits. **Fallback (later): Anthropic API key** (Console, stored in Keychain). **Not allowed:** building our own claude.ai login or reusing subscription OAuth tokens. If Buddy is ever distributed as a product, re-check the Commercial Terms. |
 | 3 | Cursor companion — look, size, offset, animation, multi-monitor behavior | Decided | **No cursor dot** (removed 2026-09-29, not needed). Buddy is invisible until drawing mode; only the answer bubble appears next to the cursor. |
-| 4 | Global shortcut for drawing mode (which keys, toggle vs hold, customizable?) | Decided | **⌃⌥Space (Control+Option+Space)** — chosen as more intuitive than ⌃⌥Space. ⚠️ macOS uses it by default for "Select next source in Input menu" (only matters with 2+ keyboard input sources) → turn that off in System Settings → Keyboard → Keyboard Shortcuts → Input Sources if needed. Registered as a normal global hotkey (Carbon `RegisterEventHotKey`) → **no extra permission needed**. If registration fails (another app owns it), Buddy says so. **Toggle:** shortcut → drawing mode on; draw one shape → auto-send on mouse release; Esc or shortcut again → cancel. Customizable later. |
+| 4 | Global shortcut for drawing mode (which keys, toggle vs hold, customizable?) | Decided | **Tap fn⌃ (fn+Control together, then release)** — replaced ⌃⌥Space on 2026-10-13. Carbon hotkeys can't be modifier-only or use fn, and a global flagsChanged monitor needs Accessibility, so `ModifierTap` polls `NSEvent.modifierFlags` (25 ms) → **no extra permission needed**. It can't see non-modifier keys, so fn⌃+key shortcuts (window tiling fn⌃+arrows) could also trigger it; arrows are filtered via `.numericPad`, and any extra modifier cancels the tap. fn⌃ chosen over ⌃⌥ / ⌥⌘ because far fewer shortcuts use it. **Toggle:** tap → drawing mode on; draw one shape → auto-send on mouse release; Esc or tap again → cancel. Customizable later. |
 | 5 | Drawing mode UX — overlay, stroke style, one vs multiple shapes, when to "submit", cancel | Decided | Screen **doesn't change** (no dim); only the cursor becomes a crosshair. Stroke: **solid red, 3 pt**. One shape per request, auto-sent on mouse release; tiny accidental strokes are ignored; drawing stays on the display where it started. The circle **stays visible until the answer appears**, then fades out. |
-| 6 | Screen capture — what to send (cropped region, full screen with annotation, both), resolution, excluding Buddy's own windows | Decided | Send **one image: the whole screen (the display where the circle was drawn) with the red circle drawn onto it.** The circle = the main question, the rest of the screen = context. Capture via ScreenCaptureKit **without Buddy's own windows**, then draw the red stroke onto the image ourselves. Downscale to Claude's recommended image size (~1568 px long edge). If small things turn out blurry, add a close-up crop as a 2nd image. |
+| 6 | Screen capture — what to send (cropped region, full screen with annotation, both), resolution, excluding Buddy's own windows | Decided | Send **one image: the whole screen (the display where the circle was drawn) with the red circle drawn onto it.** The circle = the main question, the rest of the screen = context. Capture via ScreenCaptureKit **without Buddy's own windows**, then draw the red stroke onto the image ourselves. Downscale to **≤1360 px long edge** (≈1.15 MP, the most Claude looks at) and JPEG **≤250 KB** — answer time grows with image bytes (Spike 3). If small things turn out blurry, add a close-up crop as a 2nd image. |
 | 7 | Extra context — frontmost app name, window title, Accessibility tree text under the circle | Decided | Send **app name + window title** of the window under the circle (e.g. "Xcode — ContentView.swift") as text next to the image. App name via `NSWorkspace`, window title via ScreenCaptureKit window info (covered by Screen Recording). **No Accessibility text** for MVP (would need an extra permission). |
-| 8 | Prompt design — what Claude is asked, tone, length, language | Decided (tune later) | Use **Haiku** (fast, light). Replace Claude Code's default system prompt with Buddy's own (`--system-prompt`). Always answer in a **fixed short JSON format**: `title` (≤6 words), `what` (1 sentence), `how` (≤3 bullets, ≤15 words each). Thinking off (`MAX_THINKING_TOKENS=0`), safety cap 1024. Verified in Spike 2. |
-| 9 | Answer UI — bubble near cursor, streaming, follow-up questions, copy, dismiss | Decided (MVP) | A black **message bubble grows out next to the cursor** showing title / what / how. The bubble **follows the cursor** and flips side near screen edges so it stays visible. Closes on **Esc or any click** (the click still goes through to the app), then shrinks back toward the cursor. **No extras** for MVP (no copy, no follow-ups). While waiting: small "Thinking…" bubble; errors shown in the same bubble. |
-| 10 | Permissions & onboarding (Screen Recording, Accessibility, Input Monitoring) | Decided | Only **Screen Recording** is needed (shortcut, mouse tracking, clicks and temporary Esc hotkey need none). One onboarding screen: checks Screen Recording + Claude Code installed & logged in, with a button/instructions for each. |
+| 8 | Prompt design — what Claude is asked, tone, length, language | Decided (tune later) | Use **Haiku** (fast, light). Replace Claude Code's default system prompt with Buddy's own (`--system-prompt`). Always answer in a **fixed short JSON format**: `title` (≤6 words), `what` (≤2 sentences). No tips/suggestions unless asked (the `how` bullets were dropped 2026-10-01). Thinking off (`MAX_THINKING_TOKENS=0`), safety cap 1024. Verified in Spike 2. |
+| 9 | Answer UI — bubble near cursor, streaming, follow-up questions, copy, dismiss | Decided (MVP) | A black **message bubble grows out next to the cursor** showing title / what. While thinking it **follows the cursor** and flips side near screen edges; when the answer arrives it **stays put** (drag it anywhere to move it, 2026-10-02) and shows a focused **follow-up input box** with a send button (2026-10-01) — answers append below as a thread, scrolling when long. Closes with its **× button** (or Esc while it has focus) — outside clicks no longer close it (2026-10-02) — then shrinks back toward the cursor. Esc cancels drawing / "Thinking…". No copy. While waiting: small "Thinking…" bubble; errors shown in the same bubble. |
+| 10 | Permissions & onboarding (Screen Recording, Accessibility, Input Monitoring) | Decided | Only **Screen Recording** is needed (shortcut, mouse tracking, clicks and temporary Esc hotkey need none). **Microphone** (and Speech Recognition, if Apple requires it for `SpeechAnalyzer`) only once the user first holds fn⌃ for voice (topic 13). One onboarding screen: checks Screen Recording + Claude Code installed & logged in, with a button/instructions for each. |
 | 11 | Privacy — what leaves the machine, redaction, history on/off | Decided (MVP) | Screenshot + app/window title go **only to Claude via the user's own Claude Code**. Nothing saved to disk (temp data in memory only), **no history**, `--no-session-persistence`. |
 | 12 | Distribution — signing, notarization, sandbox or not, auto-updates | Decided (MVP) | Build & run **from Xcode on David's Mac** for now. No App Sandbox (needs to launch `claude`). Developer ID signing + notarization only when sharing with others; no auto-updates for MVP. |
+| 13 | Voice input — when to listen, engine, language, feedback, follow-ups | Decided (2026-10-13) | **Tap fn⌃ = circle only** (unchanged, mic never on). **Hold fn⌃ (>~0.3 s) = circle + spoken question:** listening runs from the press until the keys are released *and* the circle is finished (whichever is later), so you can talk before, while or after circling; then it sends. Nothing said → default "Explain what I circled." **Engine:** Apple on-device `SpeechAnalyzer` + `SpeechTranscriber` (macOS 26); audio never leaves the Mac or touches disk (Claude Code can't take audio anyway). **Language:** the Mac's language, English if unsupported. **Feedback:** the bubble follows the cursor with a mic icon and the live words, then "Thinking…"; the answer bubble shows the spoken question above the answer. **Hold while an answer bubble is open:** drawing mode is on too — start a circle during the hold → new request (bubble replaced); no circle by key release → spoken follow-up in the same bubble. A tap still closes it and starts a new circle. Listening capped at 30 s. Mic permission asked on the first hold only. |
 
 ---
 
@@ -55,7 +56,7 @@ Legend: `[x]` done & verified · `[~]` implemented, needs testing · `[ ]` not s
 - [x] ~~Black dot following the cursor~~ → built, then **removed** (not needed)
 - [x] Global mouse tracking kept for the answer bubble → `Input/MouseTracker.swift`
 - [~] Menu bar **panel** (drops down from the icon, `MenuBarExtra` window style) → `UI/MenuPanelView.swift`. Kept minimal:
-  - **How to draw** (⌃⌥Space → circle → release; Esc/click closes)
+  - **How to draw** (fn⌃ tap → circle → release; × closes)
   - **Model picker**: Haiku (fast) / Sonnet (smarter), saved; warm process restarted for the new model
   - **Quit Buddy**
 - [ ] (Later, if needed) status in the panel: Claude Code connected/logged in, Screen Recording, shortcut, plan usage
@@ -70,20 +71,21 @@ Legend: `[x]` done & verified · `[~]` implemented, needs testing · `[ ]` not s
 - [x] Parser: extract the JSON object even if wrapped in ```json fences (first `{` … last `}`) → `AI/Explanation.swift`
 - [~] Warm process: always keep one `claude` process started and waiting on stdin; each request uses it and a new one is started right away → skips the ~1.8 s startup. One process per request (no shared context between screenshots) → `AI/WarmClaudeProcess.swift`
 - [~] Setting to switch model (Haiku default, Sonnet for harder screens) → in the menu panel
-- [x] Parse `--output-format stream-json` (wait for the `result` event); no tools, no MCP; 60 s timeout
+- [x] Parse `--output-format stream-json`; no tools, no MCP; 60 s timeout
+- [~] Answer on the first `assistant` event instead of `result` (skips Claude Code's 1–3 s post-turn summary; Spike 3)
 - [ ] (Later) provider protocol so other AIs can be added
 - [ ] (Later) API key provider, key stored in Keychain
 - [x] Test call from the app: menu → Test Claude (text only; verified 2026-09-29)
 
 ### Phase 3 — Drawing mode
-- [x] Decide topic 4 → ⌃⌥Space, toggle, auto-send on mouse release
+- [x] Decide topic 4 → fn⌃ tap (was ⌃⌥Space), toggle, auto-send on mouse release
 - [x] Decide topic 5 → no dim, crosshair cursor, red 3 pt stroke, circle stays until answer
 - [x] Register ⌃⌥Space as a global hotkey (Carbon `RegisterEventHotKey`) → toggle drawing mode → `Input/HotKey.swift`; also "Draw" in the menu
-- [x] If registration fails (another app owns the shortcut) → alert
+- [~] Replaced (2026-10-13) by a fn⌃ tap → `Input/ModifierTap.swift` (polls modifier flags, no permission); registration-failure alert dropped (polling can't fail). Test: tap triggers, fn⌃+arrow tiling and ⌃→ Spaces don't, fn/Globe action doesn't also fire
 - [x] On enter: invisible full-screen overlay on each display that captures mouse input; crosshair cursor → `Overlay/DrawingController.swift`
 - [x] Draw freehand red 3 pt path while primary button is held; ignore tiny strokes (<12 pt)
 - [x] Compute bounding box / center of the drawn shape
-- [x] Auto-send on mouse release; Esc or ⌃⌥Space again cancels
+- [x] Auto-send on mouse release; Esc or the shortcut again cancels
 - [x] Keep the circle visible while waiting; fade it out when the answer appears
 
 ### Phase 4 — Screen capture
@@ -91,7 +93,7 @@ Legend: `[x]` done & verified · `[~]` implemented, needs testing · `[ ]` not s
 - [x] Request Screen Recording permission (at launch + on first capture)
 - [x] Capture the display where the circle was drawn (ScreenCaptureKit), excluding Buddy's windows → `Capture/ScreenCapturer.swift`
 - [x] Draw the red stroke onto the captured image → `Capture/ScreenshotAnnotator.swift`
-- [x] Capture directly at ≤1568 px long edge, JPEG (quality 0.8), base64 in the request
+- [~] Capture directly at ≤1360 px long edge, JPEG quality 0.6 → 0.45 → 0.3 until ≤250 KB, base64 in the request (was 1568 px / q0.8; Spike 3)
 - [x] System prompt: "the red circle marks what the user is asking about; use the rest of the screen as context"
 - [ ] Test on small UI elements; if blurry, add a close-up crop as a 2nd image
 
@@ -100,8 +102,10 @@ Legend: `[x]` done & verified · `[~]` implemented, needs testing · `[ ]` not s
 - [x] Find the window under the circle's center; get its app name + window title → `Capture/WindowContext.swift`
 - [x] Build prompt + image, send through Claude Code
 - [x] Decide topic 9 → bubble follows cursor, Esc/any click closes, no extras
-- [x] Answer bubble: black message cloud grows out next to the cursor (title / what / how), follows the cursor, flips at screen edges → `UI/BubbleView.swift`, `UI/BubbleController.swift`
+- [x] Answer bubble: black message cloud grows out next to the cursor (title / what), follows the cursor, flips at screen edges → `UI/BubbleView.swift`, `UI/BubbleController.swift`
+- [~] Follow-up input box in the answer bubble: bubble pins on answer, becomes key (non-activating, Buddy stays inactive), only the bubble area takes clicks. Each follow-up goes to a fresh warm process with the same screenshot + earlier turns as text (`BuddyPrompt.followUp`), kept in memory until the bubble closes
 - [x] Close on Esc or any click → shrink back toward the cursor. Click: global mouse-down monitor (no permission needed for mouse events). Esc: register Esc as a temporary hotkey only while the bubble is open (a global key monitor would need Accessibility)
+- [~] Replaced (2026-10-02): × button closes; outside clicks don't (click monitors removed). Global Esc hotkey only while drawing / thinking, released once the answer or error shows (it would swallow Esc in every app while the bubble stays open); Esc in the focused bubble closes it via `onExitCommand`
 - [x] Loading ("Thinking…") / error / no-permission states shown in the bubble
 
 ### Phase 6 — Polish & ship
@@ -111,12 +115,21 @@ Legend: `[x]` done & verified · `[~]` implemented, needs testing · `[ ]` not s
 - [ ] No App Sandbox (Buddy must launch the `claude` CLI) → Developer ID signing + notarization, outside the Mac App Store
 - [ ] Sign & notarize; install on a clean Mac to test
 
+### Phase 7 — Voice input (topic 13)
+- [~] `Input/ModifierGesture` (replaces `ModifierTap`): tap vs hold (still down after 0.3 s) and release; another modifier / arrow mid-hold cancels. Mic starts when the hold is recognised (not on press), so a tap never turns it on
+- [~] `Voice/SpeechListener`: `AVAudioEngine` input tap → `SpeechAnalyzer` + `SpeechTranscriber` (volatile + fast results, model kept `.lingering`), Mac locale via `supportedLocale(equivalentTo:)` → English fallback, model download via `AssetInventory` on first use (bubble says so); mic started before the analyzer so early words wait in the stream; 30 s cap; nothing on disk
+- [~] `NSMicrophoneUsageDescription` + `ENABLE_RESOURCE_ACCESS_AUDIO_INPUT` (hardened-runtime audio-input entitlement, verified in the built app); `NSSpeechRecognitionUsageDescription` added in case `SpeechAnalyzer` asks for Speech Recognition too — check on first run; plain-language `VoiceError`s in the bubble
+- [~] `AppModel`: hold → drawing mode + listening; send once keys released and circle finished (screen capture runs while the last words are finalised); empty → default question; hold with bubble open → circle started = new request, otherwise spoken follow-up on release; Esc / tap cancels listening too
+- [~] Bubble: listening phase (pulsing red mic + live words, follows cursor); spoken question shown above the answer; follow-up hold shows live words in the input box with a mic instead of the send button
+- [~] System prompt: answer the user's question about the circle; allow for misheard words. Menu how-to mentions hold
+
 ### Later (after MVP)
 - [ ] Bubble design polish (look, animation)
 - [ ] Click-to-explain (single click on a UI element)
 - [ ] Highlight / rectangle / arrow tools
-- [ ] Follow-up chat on the same capture (reuse the same `claude` process with stdin kept open)
-- [ ] Voice input / spoken answers
+- [~] Follow-up chat on the same capture → done as a fresh process per follow-up (stdin must close, see findings), see Phase 5
+- [ ] Voice input → see Phase 7
+- [ ] Spoken answers
 - [ ] More AI providers
 
 ---
@@ -168,3 +181,20 @@ MAX_THINKING_TOKENS=0 CLAUDE_CODE_MAX_OUTPUT_TOKENS=1024 claude -p \
 - Prompts continued (Documents, Desktop, network volume) after the cwd fix → caused by the user's own Claude Code setup loading (hooks/plugins/skills/settings). Added `--setting-sources "" --restricted --disable-slash-commands --no-chrome` (checked against Claude Code 2.1.285 `--help`). Not `--bare`: it forces API-key auth.
 - Screen Recording asked again after every build: project was ad-hoc signed (`CODE_SIGN_IDENTITY = "-"`), so each build gets a new code signature and macOS treats it as a new app. Fix: sign with a stable Apple Development identity (set a Team in Signing & Capabilities). macOS may still re-confirm screen recording periodically; that's system behaviour.
 - Real cause of the 30 s "Thinking…" (seen in Debug Console): all stdout (even `system/init`) arrived only after the timeout's SIGTERM, although the API took ~2 s. Claude Code emits nothing until stdin gets EOF / exit. Fix: close stdin right after writing the message. Consequence: follow-up questions on the same process (Spike 1 idea) won't work this way — later needs a new process per message, or `--resume`.
+
+### Spike 3 — why answers are slow (2026-10-01, Claude Code 2.1.286, Haiku, warm process)
+
+Same text-dense test screen, time from sending the message to the answer:
+
+| Image | Bytes | Answer (`assistant`) | `result` |
+|---|---|---|---|
+| 1568 px, q0.8 (old) | 677 KB | 10–11.5 s | 11.3–13 s |
+| 1280 px, q0.6 | 357 KB | 8.3–10.3 s | 9.6–11.7 s |
+| 1568 px, q0.3 | 277 KB | 5.6 s | 7.6 s |
+| 1360 px, q0.3 (new) | 223 KB | 4.9–5.3 s | 6.6–6.7 s |
+| 1024 px, q0.5 | 193 KB | 4.3–5.7 s | 5.4–7.2 s |
+
+- **Image bytes drive the time**, not pixels or tokens (1568 px q0.3 is as fast as 1024 px). 1568 × 980 is shrunk by the API to ~1.15 MP anyway (input tokens barely grow above 1280 px).
+- Claude Code sends `result` only after a background **post-turn summary** (`system/post_turn_summary`), 1–3 s after the answer → Buddy now answers on the `assistant` event.
+- Warm process works: `system/init` arrives 0.02 s after the message, so startup is fully hidden.
+- **One long-lived session: rejected.** In 2.1.286 a session with stdin kept open does answer each message (the "nothing until EOF" from 2026-09-30 no longer reproduces), but it isn't faster than the warm process, and every earlier screenshot stays in context (3rd message: 5.2k input tokens) → slower and mixes old screens into the answer. Useful later for follow-up questions on the same capture.
