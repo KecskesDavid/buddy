@@ -23,7 +23,9 @@ nonisolated enum CaptureError: LocalizedError {
 
 /// Captures the whole display (without Buddy's own windows), scaled to Claude's recommended size.
 enum ScreenCapturer {
-    static let maxLongEdge: CGFloat = 1568
+    /// 1360 × 850 (16:10) ≈ 1.15 MP, the most Claude looks at: bigger images are shrunk by the API anyway,
+    /// so extra pixels only add upload bytes, and the bytes are what make answers slow.
+    static let maxLongEdge: CGFloat = 1360
 
     static var hasPermission: Bool { CGPreflightScreenCaptureAccess() }
 

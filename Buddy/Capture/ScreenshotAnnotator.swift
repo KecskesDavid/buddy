@@ -28,7 +28,15 @@ enum ScreenshotAnnotator {
         return context.makeImage()
     }
 
-    static func jpegData(_ image: CGImage, quality: CGFloat = 0.8) -> Data? {
-        NSBitmapImageRep(cgImage: image).representation(using: .jpeg, properties: [.compressionFactor: quality])
+    /// Claude's answer time grows with the image bytes (Haiku, measured: ~680 KB ≈ 11 s, ~250 KB ≈ 5 s),
+    /// so step the JPEG quality down until it fits the budget.
+    static func jpegData(_ image: CGImage, maxBytes: Int = 250 * 1024) -> Data? {
+        let rep = NSBitmapImageRep(cgImage: image)
+        var data: Data?
+        for quality: CGFloat in [0.6, 0.45, 0.3] {
+            data = rep.representation(using: .jpeg, properties: [.compressionFactor: quality])
+            if let data, data.count <= maxBytes { break }
+        }
+        return data
     }
 }

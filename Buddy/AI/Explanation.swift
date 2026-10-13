@@ -4,11 +4,6 @@ import Foundation
 nonisolated struct Explanation: Decodable, Sendable, Equatable {
     let title: String
     let what: String
-    let how: [String]
-
-    var formattedBody: String {
-        ([what] + how.map { "• \($0)" }).joined(separator: "\n")
-    }
 
     /// Tolerates ```json fences or extra text: takes everything from the first `{` to the last `}`.
     static func parse(_ text: String) throws -> Explanation {
